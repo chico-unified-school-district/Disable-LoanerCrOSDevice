@@ -59,7 +59,7 @@ foreach ($device in $disableLoaners) {
  Write-Debug "Process $sn"
  if ($crosDev.status -eq "ACTIVE") {
   # If cros device set to 'active' then disable
-  Add-Log disable $sn $WhatIf
+  Add-Log disable $sn -Whatif:$WhatIf
   if (!$WhatIf) { & $gamExe update cros $id action disable *>$null }`
   
  }

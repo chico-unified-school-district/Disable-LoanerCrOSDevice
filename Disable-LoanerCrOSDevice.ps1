@@ -51,15 +51,16 @@ Write-Host "Check for devices to Disable" -Fore Green
 $disableQuery = Get-Content -Path .\sql\disable.sql -Raw
 $disableLoaners = Invoke-SqlCommand -Server $SQLServer -Database $SQLDatabase -Cred $SQLCredential -Query $disableQuery
 
-foreach ($device in $disableLoaners) {
- $sn = $device.serialNumber
+foreach ($dev in $disableLoaners) {
+ $sn = $dev.serialNumber
+ $barCode = $dev.BarCode
  ($crosDev = & $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV) *>$null # *>$null suppresses noisy output
  $id = $crosDev.deviceId
 
  Write-Debug "Process $sn"
  if ($crosDev.status -eq "ACTIVE") {
   # If cros device set to 'active' then disable
-  Add-Log disable $sn -Whatif:$WhatIf
+  Add-Log disable "$sn,$barCode" -Whatif:$WhatIf
   if (!$WhatIf) { & $gamExe update cros $id action disable *>$null }`
   
  }

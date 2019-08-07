@@ -47,7 +47,7 @@ $gamExe = '.\lib\gam-64\gam.exe'
 $crosFields = "deviceId,status,serialNumber"
 
 # Disable
-Write-Host "Check for devices to Disable" -Fore Green
+"Checking for devices to Disable"
 $disableQuery = Get-Content -Path .\sql\disable.sql -Raw
 $disableLoaners = Invoke-SqlCommand -Server $SQLServer -Database $SQLDatabase -Cred $SQLCredential -Query $disableQuery
 

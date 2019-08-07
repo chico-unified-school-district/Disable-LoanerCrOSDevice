@@ -66,3 +66,4 @@ foreach ($dev in $disableLoaners) {
  }
  else { Write-Verbose "$sn,Skipping. Already Disabled" }
 }
+$error

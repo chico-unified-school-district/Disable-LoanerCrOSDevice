@@ -37,6 +37,7 @@ param (
 Clear-Host; $error.clear() # Clear Screen and $error.
 
 # Variables
+$ENV:GAM_DEVICE_MAX_RESULTS = 100 # THANKS GOOGLE FOR CHANGING THE DAMN API ON US!!!
 $gamExe = '.\lib\gam-64\gam.exe'
 
 # Imported Functions
@@ -54,7 +55,9 @@ $disableLoaners = Invoke-SqlCommand -Server $SQLServer -Database $SQLDatabase -C
 foreach ($dev in $disableLoaners) {
  $sn = $dev.serialNumber
  $barCode = $dev.BarCode
- ($crosDev = & $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV) *>$null # *>$null suppresses noisy output
+ # *>$null suppresses noisy output
+ # ($crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV) *>$null
+ $crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV
  $id = $crosDev.deviceId
 
  Write-Debug "Process $sn"
@@ -67,3 +70,4 @@ foreach ($dev in $disableLoaners) {
  else { Write-Verbose "$sn,Skipping. Already Disabled" }
 }
 $error
+$error.clear()

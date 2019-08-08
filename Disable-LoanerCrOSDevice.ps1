@@ -56,8 +56,8 @@ foreach ($dev in $disableLoaners) {
  $sn = $dev.serialNumber
  $barCode = $dev.BarCode
  # *>$null suppresses noisy output
- # ($crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV) *>$null
- $crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV
+ ($crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV) *>$null
+ # $crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV
  $id = $crosDev.deviceId
 
  Write-Debug "Process $sn"

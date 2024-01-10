@@ -1,4 +1,4 @@
-<# 
+<#
 .SYNOPSIS
  Queries Aeries for Chromebooks marked as loaners and disables them via gam.exe.
 .DESCRIPTION
@@ -18,7 +18,7 @@
 #>
 
 [cmdletbinding()]
-param ( 
+param (
  # SQL server name
  [Parameter(Mandatory = $True)]
  [Alias('SISServer')]
@@ -27,47 +27,70 @@ param (
  [Parameter(Mandatory = $True)]
  [Alias('SISDatabase', 'SISDB')]
  [string]$SQLDatabase,
- # Aeries SQL user account with SELECT permission to STU table 
+ # Aeries SQL user account with SELECT permission to STU table
  [Parameter(Mandatory = $True)]
  [Alias('SISCred')]
  [System.Management.Automation.PSCredential]$SQLCredential,
+ [Alias('wi')]
  [switch]$WhatIf
 )
 
-Clear-Host; $error.clear() # Clear Screen and $error.
+function Get-SqlData ($params) {
+ begin { $sql = Get-Content -Path .\sql\disable.sql -Raw }
+ process {
+  $data = Invoke-SqlCmd @params -Query $sql
+  Write-Host ('{0},Count: {1}' -f $MyInvocation.MyCommand.Name, $data.count)
+  $data
+ }
+}
+
+function Disable-GDevice {
+ process {
+  $msg = $MyInvocation.MyCommand.Name, $_.barCode
+  if ($_.status -eq "DISABLED") { return (Write-Verbose ('{0},{1},CrOS Device already disabled' -f $msg)) }
+  Write-Host ('{0},{1}' -f $MyInvocation.MyCommand.Name, $_.barCode) -F Blue
+  Write-Host "& $gam update cros $($_.id) action disable" -F Blue
+  if (!$WhatIf) { (& $gam update cros $_.id action disable) *>$null }
+ }
+}
+
+function Get-CrosDev {
+ begin { $crosFields = "deviceId,status,serialNumber" }
+ process {
+  $msg = $MyInvocation.MyCommand.Name, $_.barCode
+  Write-Verbose ('{0},{1}' -f $msg)
+  # Write-Verbose "& $gam print cros query `"asset_id: $($_.barCode)`" fields $crosFields"
+  ($dev = & $gam print cros query "asset_id: $($_.barCode)" fields $crosFields | ConvertFrom-CSV) *>$null
+  if (!$dev) { return (Write-Verbose ('{0},{1}, CrOS device not found' -f $msg)) }
+  $obj = [PSCustomObject]@{
+   sn      = $_.sn
+   barCode = $_.barCode
+   dts     = $_.dts
+   id      = $dev.deviceId
+   status  = $dev.status
+  }
+  $obj
+  Write-Verbose ($obj | Out-String)
+ }
+}
 
 # Variables
-$ENV:GAM_DEVICE_MAX_RESULTS = 100 # THANKS GOOGLE FOR CHANGING THE DAMN API ON US!!!
-$gamExe = '.\lib\gam-64\gam.exe'
 
 # Imported Functions
-. .\lib\Add-Log.ps1 # Format Log entries
-. .\lib\Invoke-SqlCommand.ps1 # Useful function for querying SQL and returning results
+. .\lib\Load-Module.ps1
+. .\lib\Show-TestRun.ps1
 
-# Processing
-$crosFields = "deviceId,status,serialNumber"
+Show-TestRun
 
-# Disable
-"Checking for devices to Disable"
-$disableQuery = Get-Content -Path .\sql\disable.sql -Raw
-$disableLoaners = Invoke-SqlCommand -Server $SQLServer -Database $SQLDatabase -Cred $SQLCredential -Query $disableQuery
+'SQLServer' | Load-Module
 
-foreach ($dev in $disableLoaners) {
- $sn = $dev.serialNumber
- $barCode = $dev.BarCode
- # *>$null suppresses noisy output
- ($crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV) *>$null
- # $crosDev = . $gamExe print cros query "id: $sn" fields $crosFields | ConvertFrom-CSV
- $id = $crosDev.deviceId
-
- Write-Debug "Process $sn"
- if ($crosDev.status -eq "ACTIVE") {
-  # If cros device set to 'active' then disable
-  Add-Log disable "$sn,$barCode" -Whatif:$WhatIf
-  if (!$WhatIf) { & $gamExe update cros $id action disable *>$null }`
-  
- }
- else { Write-Verbose "$sn,Skipping. Already Disabled" }
+$sqlParams = @{
+ Server                 = $SQLServer
+ Database               = $SQLDatabase
+ Credential             = $SQLCredential
+ TrustServerCertificate = $true
 }
-# $error
-# $error.clear()
+
+$gam = '.\bin\gam.exe'
+
+Get-SqlData $sqlParams | Get-CrosDev | Disable-GDevice

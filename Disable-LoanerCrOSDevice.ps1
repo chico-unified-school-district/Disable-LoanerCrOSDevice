@@ -35,11 +35,11 @@ param (
  [switch]$WhatIf
 )
 
-function Get-SqlData ($params) {
+function Get-SqlData ($sqlParams) {
  begin { $sql = Get-Content -Path .\sql\disable.sql -Raw }
  process {
-  $data = Invoke-SqlCmd @params -Query $sql
-  Write-Host ('{0},Count: {1}' -f $MyInvocation.MyCommand.Name, $data.count)
+  $data = New-SqlOperation @sqlParams -Query $sql
+  Write-Host ('{0},Count: {1}' -f $MyInvocation.MyCommand.Name, @($data).count)
   $data
  }
 }
@@ -74,21 +74,14 @@ function Get-CrosDev {
  }
 }
 
-# Variables
-
-# Imported Functions
-. .\lib\Load-Module.ps1
-. .\lib\Show-TestRun.ps1
-
 Show-TestRun
 
-'SQLServer' | Load-Module
+Import-Module -Name CommonScriptFunctions, dbatools
 
 $sqlParams = @{
  Server                 = $SQLServer
  Database               = $SQLDatabase
  Credential             = $SQLCredential
- TrustServerCertificate = $true
 }
 
 $gam = '.\bin\gam.exe'

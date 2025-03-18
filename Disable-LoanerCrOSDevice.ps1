@@ -74,7 +74,7 @@ function Get-CrosDev {
  }
 }
 
-Show-TestRun
+if ($WhatIf) {Show-TestRun}
 
 Import-Module -Name CommonScriptFunctions, dbatools
 
